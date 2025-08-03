@@ -320,31 +320,17 @@
     </footer>
 
     <script>
-        const STORAGE_KEY = 'radioUsers';
         let currentUserQRA = null;
 
         function checkLogin() {
             const lastLoggedInUser = localStorage.getItem('lastLoggedInUser');
             if (lastLoggedInUser) {
-                const users = getUsers();
-                if (users[lastLoggedInUser]) {
-                    loginSuccess(lastLoggedInUser);
-                    return;
-                }
+                loginSuccess(lastLoggedInUser, JSON.parse(localStorage.getItem('lastLoggedInFrequencies')));
+            } else {
+                showLoginScreen();
             }
-            showLoginScreen();
         }
 
-        function getUsers() {
-            const data = localStorage.getItem(STORAGE_KEY);
-            return data ? JSON.parse(data) : {};
-        }
-
-        function saveUsers(users) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
-        }
-
-        // --- Gerenciamento de Telas ---
         function hideAllScreens() {
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('forgot-password-screen').style.display = 'none';
@@ -362,12 +348,11 @@
             document.getElementById('forgot-password-screen').style.display = 'block';
         }
 
-        function showProfile() {
+        async function showProfile() {
             hideAllScreens();
-            const users = getUsers();
-            const user = users[currentUserQRA];
             document.getElementById('profile-qra').textContent = currentUserQRA;
-            document.getElementById('profile-email').textContent = user.email || 'Nenhum email cadastrado';
+            const userEmail = await getUserEmail(currentUserQRA);
+            document.getElementById('profile-email').textContent = userEmail || 'Nenhum email cadastrado';
             document.getElementById('profile-screen').style.display = 'block';
         }
 
@@ -376,35 +361,50 @@
             document.getElementById('main-content').style.display = 'block';
         }
 
-        function loginSuccess(qra) {
+        function loginSuccess(qra, frequencies) {
             currentUserQRA = qra;
             document.getElementById('current-qra').textContent = qra;
             localStorage.setItem('lastLoggedInUser', qra);
-            loadFrequencies();
+            localStorage.setItem('lastLoggedInFrequencies', JSON.stringify(frequencies));
+            loadFrequencies(frequencies);
             showMainContent();
         }
 
-        // --- Lógica de Login e Cadastro ---
-        function loginUser() {
-            const qra = document.getElementById('qra-input').value.trim();
-            const password = document.getElementById('password-input').value.trim();
-            const errorElement = document.getElementById('login-error');
-            const users = getUsers();
-
-            if (users[qra] && users[qra].password === password) {
-                loginSuccess(qra);
-                errorElement.style.display = 'none';
-            } else {
-                errorElement.textContent = 'QRA ou senha incorretos.';
-                errorElement.style.display = 'block';
+        // --- Lógica de Login, Cadastro e Gerenciamento (Atualizada para Vercel) ---
+        async function callVercelFunction(type, data) {
+            try {
+                const response = await fetch('/api/send-reset-email', {
+                    method: 'POST',
+                    body: JSON.stringify({ ...data, type }),
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('Erro na chamada da função Vercel:', error);
+                return { error: 'Erro de conexão com o servidor.' };
             }
         }
 
-        function createUser() {
+        async function loginUser() {
             const qra = document.getElementById('qra-input').value.trim();
             const password = document.getElementById('password-input').value.trim();
             const errorElement = document.getElementById('login-error');
-            const users = getUsers();
+
+            const result = await callVercelFunction('login', { qra, password });
+
+            if (result.error) {
+                errorElement.textContent = result.error;
+                errorElement.style.display = 'block';
+            } else {
+                loginSuccess(result.user.qra, result.user.frequencies);
+                errorElement.style.display = 'none';
+            }
+        }
+
+        async function createUser() {
+            const qra = document.getElementById('qra-input').value.trim();
+            const password = document.getElementById('password-input').value.trim();
+            const errorElement = document.getElementById('login-error');
 
             if (!qra || !password) {
                 errorElement.textContent = 'QRA e senha não podem estar vazios.';
@@ -412,42 +412,23 @@
                 return;
             }
 
-            if (users[qra]) {
-                errorElement.textContent = 'Este QRA já existe. Tente outro.';
+            const result = await callVercelFunction('createUser', { qra, password });
+
+            if (result.error) {
+                errorElement.textContent = result.error;
                 errorElement.style.display = 'block';
             } else {
-                users[qra] = { password: password, frequencies: [], email: '' };
-                saveUsers(users);
-                loginSuccess(qra);
+                loginSuccess(result.user.qra, []);
                 errorElement.style.display = 'none';
             }
         }
 
-        function logoutUser() {
-            currentUserQRA = null;
-            localStorage.removeItem('lastLoggedInUser');
-            document.getElementById('qra-input').value = '';
-            document.getElementById('password-input').value = '';
-            showLoginScreen();
-            
-            const tableBody = document.getElementById('frequencyTable').getElementsByTagName('tbody')[0];
-            tableBody.innerHTML = '';
-        }
-
-        // --- Lógica do Perfil e Alteração de Dados ---
-        function changePassword() {
+        async function changePassword() {
             const currentPassword = document.getElementById('current-password').value;
             const newPassword = document.getElementById('new-password').value;
             const confirmNewPassword = document.getElementById('confirm-new-password').value;
             const errorElement = document.getElementById('password-error');
-            const users = getUsers();
-            const user = users[currentUserQRA];
 
-            if (user.password !== currentPassword) {
-                errorElement.textContent = 'A senha atual está incorreta.';
-                errorElement.style.display = 'block';
-                return;
-            }
             if (newPassword.length < 6) {
                 errorElement.textContent = 'A nova senha deve ter no mínimo 6 caracteres.';
                 errorElement.style.display = 'block';
@@ -459,18 +440,25 @@
                 return;
             }
 
-            user.password = newPassword;
-            saveUsers(users);
-            errorElement.style.display = 'none';
-            alert('Senha alterada com sucesso!');
-            showMainContent();
+            const result = await callVercelFunction('changePassword', {
+                qra: currentUserQRA,
+                password: currentPassword,
+                newPassword: newPassword
+            });
+
+            if (result.error) {
+                errorElement.textContent = result.error;
+                errorElement.style.display = 'block';
+            } else {
+                alert('Senha alterada com sucesso!');
+                errorElement.style.display = 'none';
+                showMainContent();
+            }
         }
 
-        function changeEmail() {
+        async function changeEmail() {
             const newEmail = document.getElementById('new-email').value.trim();
             const errorElement = document.getElementById('email-error');
-            const users = getUsers();
-            const user = users[currentUserQRA];
 
             if (!newEmail || !newEmail.includes('@')) {
                 errorElement.textContent = 'Por favor, insira um email válido.';
@@ -478,65 +466,66 @@
                 return;
             }
 
-            user.email = newEmail;
-            saveUsers(users);
-            errorElement.style.display = 'none';
-            alert('Email alterado com sucesso!');
-            showMainContent();
+            const result = await callVercelFunction('changeEmail', {
+                qra: currentUserQRA,
+                newEmail: newEmail
+            });
+
+            if (result.error) {
+                errorElement.textContent = result.error;
+                errorElement.style.display = 'block';
+            } else {
+                alert('Email alterado com sucesso!');
+                errorElement.style.display = 'none';
+                showProfile();
+            }
         }
 
-        // --- Lógica de Recuperação de Senha (Atualizada para Vercel) ---
         async function requestPasswordReset() {
             const qra = document.getElementById('forgot-qra').value.trim();
             const email = document.getElementById('forgot-email').value.trim();
             const errorElement = document.getElementById('forgot-error');
             const infoElement = document.getElementById('forgot-info');
-            const users = getUsers();
             
             errorElement.style.display = 'none';
             infoElement.style.display = 'none';
 
-            if (!users[qra] || users[qra].email !== email || !email) {
-                errorElement.textContent = 'QRA ou email não correspondem a uma conta válida.';
+            const result = await callVercelFunction('requestPasswordReset', { qra, email });
+
+            if (result.error) {
+                errorElement.textContent = result.error;
                 errorElement.style.display = 'block';
-                return;
-            }
-
-            // Gerar um código de redefinição temporário
-            const resetCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-            users[qra].password = resetCode;
-            saveUsers(users);
-            
-            const subject = 'Código de Redefinição de Senha';
-            const body = `Olá, ${qra}.<br><br>Seu código de redefinição de senha é: <b>${resetCode}</b>.<br>Use-o para fazer login e, em seguida, altere sua senha no seu perfil.`;
-
-            // Chama a Função Vercel para enviar o email
-            try {
-                const response = await fetch('/api/send-reset-email', {
-                    method: 'POST',
-                    body: JSON.stringify({ email, subject, body }),
-                    headers: { 'Content-Type': 'application/json' }
-                });
-
-                if (response.ok) {
-                    infoElement.textContent = `Código de redefinição enviado para ${email}. Verifique sua caixa de entrada.`;
-                    infoElement.style.display = 'block';
-                    setTimeout(() => showLoginScreen(), 5000);
-                } else {
-                    errorElement.textContent = 'Ocorreu um erro ao enviar o email. Tente novamente mais tarde.';
-                    errorElement.style.display = 'block';
-                }
-            } catch (error) {
-                console.error('Erro na chamada da função Vercel:', error);
-                errorElement.textContent = 'Não foi possível conectar-se ao servidor de email. Verifique sua conexão ou tente mais tarde.';
-                errorElement.style.display = 'block';
+            } else {
+                infoElement.textContent = `Código de redefinição enviado para ${email}. Verifique sua caixa de entrada.`;
+                infoElement.style.display = 'block';
+                setTimeout(() => showLoginScreen(), 5000);
             }
         }
 
-        // --- Lógica da Tabela de Frequências (Mantida) ---
-        function loadFrequencies() {
-            const users = getUsers();
-            const frequencies = users[currentUserQRA] ? users[currentUserQRA].frequencies : [];
+        async function getUserEmail(qra) {
+            const response = await fetch('/api/send-reset-email', {
+                method: 'POST',
+                body: JSON.stringify({ type: 'login', qra, password: '' }),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+            return data.user ? data.user.email : null;
+        }
+
+        function logoutUser() {
+            currentUserQRA = null;
+            localStorage.removeItem('lastLoggedInUser');
+            localStorage.removeItem('lastLoggedInFrequencies');
+            document.getElementById('qra-input').value = '';
+            document.getElementById('password-input').value = '';
+            showLoginScreen();
+            
+            const tableBody = document.getElementById('frequencyTable').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = '';
+        }
+
+        // --- Lógica da Tabela de Frequências ---
+        function loadFrequencies(frequencies) {
             const tableBody = document.getElementById('frequencyTable').getElementsByTagName('tbody')[0];
             tableBody.innerHTML = '';
             frequencies.forEach(freq => {
@@ -544,9 +533,8 @@
             });
         }
 
-        function saveFrequencies() {
+        async function saveFrequencies() {
             if (!currentUserQRA) return;
-            const users = getUsers();
             const tableBody = document.getElementById('frequencyTable').getElementsByTagName('tbody')[0];
             const rows = Array.from(tableBody.rows);
             const frequencies = rows.map(row => {
@@ -558,8 +546,18 @@
                     groupName: cells[3].querySelector('input').value
                 };
             });
-            users[currentUserQRA].frequencies = frequencies;
-            saveUsers(users);
+            
+            const result = await callVercelFunction('saveFrequencies', {
+                qra: currentUserQRA,
+                frequencies: frequencies
+            });
+
+            if (result.error) {
+                console.error('Erro ao salvar frequências:', result.error);
+                alert('Erro ao salvar frequências. Tente novamente.');
+            } else {
+                localStorage.setItem('lastLoggedInFrequencies', JSON.stringify(frequencies));
+            }
         }
 
         function addNewRow() {
@@ -601,6 +599,7 @@
             const isGroupCell = newRow.insertCell(2);
             isGroupCell.setAttribute('data-label', 'É Grupo?');
             const isGroupSelect = createSelect(['Não', 'Sim'], data.isGroup);
+            isGroupSelect.addEventListener('change', saveFrequencies);
             isGroupCell.appendChild(isGroupSelect);
 
             const nameGroupCell = newRow.insertCell(3);
