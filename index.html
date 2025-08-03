@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minhas Frequências de Radioamador</title>
+    <style>
+        /* Estilos Gerais */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        h1 {
+            color: #00bcd4;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            letter-spacing: 1px;
+        }
+
+        /* --- Estilos de Containers e Formulários --- */
+        .container {
+            background-color: #2c2c2c;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            margin: auto;
+        }
+        .form-container h2, h3 {
+            color: #00bcd4;
+            margin-bottom: 20px;
+        }
+        .form-container input {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #555;
+            background-color: #444;
+            color: #eee;
+            border-radius: 4px;
+            outline: none;
+        }
+        .form-container input:focus {
+            border-color: #00bcd4;
+            box-shadow: 0 0 0 2px rgba(0, 188, 212, 0.3);
+        }
+        .form-container button, .back-btn {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .primary-btn {
+            background-color: #00bcd4;
+            color: #1a1a1a;
+        }
+        .primary-btn:hover {
+            background-color: #00a0b8;
+        }
+        .secondary-btn {
+            background-color: #555;
+            color: white;
+        }
+        .secondary-btn:hover {
+            background-color: #777;
+        }
+        .error-message {
+            color: #e74c3c;
+            margin-top: 10px;
+            display: none;
+        }
+        .info-message {
+            color: #2ecc71;
+            margin-top: 10px;
+            display: none;
+        }
+
+        /* --- Telas Escondidas --- */
+        #login-screen, #forgot-password-screen, #profile-screen, #main-content {
+            display: none;
+        }
+        
+        /* --- Estilos do Conteúdo Principal (Tabela) --- */
+        #main-content {
+            width: 100%;
+            max-width: 1000px;
+        }
+        #top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        #user-info #logout-btn, #profile-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-left: 10px;
+        }
+        #user-info #logout-btn:hover {
+            background-color: #c0392b;
+        }
+        #profile-btn {
+            background-color: #3498db;
+        }
+        #profile-btn:hover {
+            background-color: #2980b9;
+        }
+
+        /* Estilos da Tabela */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #2c2c2c;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            border: 1px solid #3a3a3a;
+            padding: 12px 15px;
+            text-align: left;
+            font-size: 0.95em;
+        }
+        th {
+            background-color: #3a3a3a;
+            color: #00bcd4;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        tr:nth-child(even) {
+            background-color: #262626;
+        }
+        tr:hover {
+            background-color: #383838;
+        }
+        td input[type="text"], td select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #555;
+            background-color: #444;
+            color: #eee;
+            border-radius: 4px;
+            box-sizing: border-box;
+            outline: none;
+            font-size: 1em;
+        }
+        td input[type="text"]:focus, td select:focus {
+            border-color: #00bcd4;
+            box-shadow: 0 0 0 2px rgba(0, 188, 212, 0.3);
+        }
+        td input[type="text"]:disabled {
+            background-color: #333;
+            color: #888;
+            cursor: not-allowed;
+        }
+        .add-row-btn, .delete-btn {
+            padding: 10px 20px;
+            background-color: #00bcd4;
+            color: #1a1a1a;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+            font-size: 0.9em;
+        }
+        .add-row-btn {
+            display: block;
+            margin: 30px auto 20px auto;
+            font-size: 1.1em;
+            width: fit-content;
+        }
+        .add-row-btn:hover {
+            background-color: #00a0b8;
+            transform: translateY(-2px);
+        }
+        .delete-btn {
+            background-color: #e74c3c;
+            color: white;
+            font-size: 0.9em;
+        }
+        .delete-btn:hover {
+            background-color: #c0392b;
+        }
+        footer {
+            margin-top: auto;
+            padding-top: 20px;
+            color: #888;
+            font-size: 0.85em;
+        }
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            h1 { font-size: 1.8em; margin-bottom: 20px; }
+            table { display: block; width: 100%; overflow-x: auto; }
+            thead { display: none; }
+            tr {
+                display: block;
+                margin-bottom: 10px;
+                background-color: #2c2c2c;
+                border-radius: 8px;
+                padding: 10px;
+            }
+            td {
+                display: block;
+                text-align: right;
+                border: none;
+                position: relative;
+                padding-left: 50%;
+                font-size: 1em;
+            }
+            td::before {
+                content: attr(data-label);
+                position: absolute;
+                left: 10px;
+                width: calc(50% - 20px);
+                padding-right: 10px;
+                white-space: nowrap;
+                text-align: left;
+                font-weight: bold;
+                color: #00bcd4;
+            }
+            td input[type="text"], td select { width: 100%; }
+            .delete-btn { width: 100%; margin-top: 10px; padding: 8px; }
+            .add-row-btn { width: 90%; }
+        }
+    </style>
+</head>
+<body onload="checkLogin()">
+    <h1>Minhas Frequências de Radioamador</h1>
+
+    <div id="login-screen" class="container form-container">
+        <h2>Acessar Frequências</h2>
+        <input type="text" id="qra-input" placeholder="Seu QRA" required>
+        <input type="password" id="password-input" placeholder="Senha" required>
+        <div id="login-error" class="error-message"></div>
+        <button class="primary-btn" onclick="loginUser()">Entrar</button>
+        <button class="secondary-btn" onclick="createUser()">Criar Conta</button>
+        <a href="#" onclick="showForgotPassword()">Esqueci a senha?</a>
+    </div>
+
+    <div id="forgot-password-screen" class="container form-container">
+        <h2>Recuperar Senha</h2>
+        <p>Informe seu QRA e email. Um código de redefinição será enviado para seu email.</p>
+        <input type="text" id="forgot-qra" placeholder="Seu QRA" required>
+        <input type="email" id="forgot-email" placeholder="Seu Email" required>
+        <div id="forgot-error" class="error-message"></div>
+        <div id="forgot-info" class="info-message"></div>
+        <button class="primary-btn" onclick="requestPasswordReset()">Enviar Código</button>
+        <button class="secondary-btn" onclick="showLoginScreen()">Voltar ao Login</button>
+    </div>
+
+    <div id="profile-screen" class="container form-container">
+        <h2>Meu Perfil</h2>
+        <p>QRA: <span id="profile-qra"></span></p>
+        <p>Email: <span id="profile-email"></span></p>
+        
+        <h3>Alterar Senha</h3>
+        <input type="password" id="current-password" placeholder="Senha atual" required>
+        <input type="password" id="new-password" placeholder="Nova senha" required>
+        <input type="password" id="confirm-new-password" placeholder="Confirmar nova senha" required>
+        <div id="password-error" class="error-message"></div>
+        <button class="primary-btn" onclick="changePassword()">Salvar Nova Senha</button>
+        <button class="secondary-btn" onclick="showMainContent()">Voltar</button>
+        
+        <h3>Alterar Email</h3>
+        <input type="email" id="new-email" placeholder="Novo Email" required>
+        <div id="email-error" class="error-message"></div>
+        <button class="primary-btn" onclick="changeEmail()">Salvar Email</button>
+    </div>
+
+    <div id="main-content">
+        <div id="top-bar">
+            <div id="user-info">
+                QRA: <span id="current-qra"></span>
+                <button id="profile-btn" onclick="showProfile()">Perfil</button>
+                <button id="logout-btn" onclick="logoutUser()">Sair</button>
+            </div>
+        </div>
+
+        <table id="frequencyTable">
+            <thead>
+                <tr>
+                    <th>Frequência (MHz)</th>
+                    <th>Modo</th>
+                    <th>É Grupo?</th>
+                    <th>Nome do Grupo</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+
+        <button class="add-row-btn" onclick="addNewRow()">Adicionar Nova Frequência</button>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 Radioamadorismo. Todos os direitos reservados.</p>
+    </footer>
+
+    <script>
+        const STORAGE_KEY = 'radioUsers';
+        let currentUserQRA = null;
+
+        function checkLogin() {
+            const lastLoggedInUser = localStorage.getItem('lastLoggedInUser');
+            if (lastLoggedInUser) {
+                const users = getUsers();
+                if (users[lastLoggedInUser]) {
+                    loginSuccess(lastLoggedInUser);
+                    return;
+                }
+            }
+            showLoginScreen();
+        }
+
+        function getUsers() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : {};
+        }
+
+        function saveUsers(users) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
+        }
+
+        // --- Gerenciamento de Telas ---
+        function hideAllScreens() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('forgot-password-screen').style.display = 'none';
+            document.getElementById('profile-screen').style.display = 'none';
+            document.getElementById('main-content').style.display = 'none';
+        }
+
+        function showLoginScreen() {
+            hideAllScreens();
+            document.getElementById('login-screen').style.display = 'block';
+        }
+
+        function showForgotPassword() {
+            hideAllScreens();
+            document.getElementById('forgot-password-screen').style.display = 'block';
+        }
+
+        function showProfile() {
+            hideAllScreens();
+            const users = getUsers();
+            const user = users[currentUserQRA];
+            document.getElementById('profile-qra').textContent = currentUserQRA;
+            document.getElementById('profile-email').textContent = user.email || 'Nenhum email cadastrado';
+            document.getElementById('profile-screen').style.display = 'block';
+        }
+
+        function showMainContent() {
+            hideAllScreens();
+            document.getElementById('main-content').style.display = 'block';
+        }
+
+        function loginSuccess(qra) {
+            currentUserQRA = qra;
+            document.getElementById('current-qra').textContent = qra;
+            localStorage.setItem('lastLoggedInUser', qra);
+            loadFrequencies();
+            showMainContent();
+        }
+
+        // --- Lógica de Login e Cadastro ---
+        function loginUser() {
+            const qra = document.getElementById('qra-input').value.trim();
+            const password = document.getElementById('password-input').value.trim();
+            const errorElement = document.getElementById('login-error');
+            const users = getUsers();
+
+            if (users[qra] && users[qra].password === password) {
+                loginSuccess(qra);
+                errorElement.style.display = 'none';
+            } else {
+                errorElement.textContent = 'QRA ou senha incorretos.';
+                errorElement.style.display = 'block';
+            }
+        }
+
+        function createUser() {
+            const qra = document.getElementById('qra-input').value.trim();
+            const password = document.getElementById('password-input').value.trim();
+            const errorElement = document.getElementById('login-error');
+            const users = getUsers();
+
+            if (!qra || !password) {
+                errorElement.textContent = 'QRA e senha não podem estar vazios.';
+                errorElement.style.display = 'block';
+                return;
+            }
+
+            if (users[qra]) {
+                errorElement.textContent = 'Este QRA já existe. Tente outro.';
+                errorElement.style.display = 'block';
+            } else {
+                users[qra] = { password: password, frequencies: [], email: '' };
+                saveUsers(users);
+                loginSuccess(qra);
+                errorElement.style.display = 'none';
+            }
+        }
+
+        function logoutUser() {
+            currentUserQRA = null;
+            localStorage.removeItem('lastLoggedInUser');
+            document.getElementById('qra-input').value = '';
+            document.getElementById('password-input').value = '';
+            showLoginScreen();
+            
+            const tableBody = document.getElementById('frequencyTable').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = '';
+        }
+
+        // --- Lógica do Perfil e Alteração de Dados ---
+        function changePassword() {
+            const currentPassword = document.getElementById('current-password').value;
+            const newPassword = document.getElementById('new-password').value;
+            const confirmNewPassword = document.getElementById('confirm-new-password').value;
+            const errorElement = document.getElementById('password-error');
+            const users = getUsers();
+            const user = users[currentUserQRA];
+
+            if (user.password !== currentPassword) {
+                errorElement.textContent = 'A senha atual está incorreta.';
+                errorElement.style.display = 'block';
+                return;
+            }
+            if (newPassword.length < 6) {
+                errorElement.textContent = 'A nova senha deve ter no mínimo 6 caracteres.';
+                errorElement.style.display = 'block';
+                return;
+            }
+            if (newPassword !== confirmNewPassword) {
+                errorElement.textContent = 'A nova senha e a confirmação não coincidem.';
+                errorElement.style.display = 'block';
+                return;
+            }
+
+            user.password = newPassword;
+            saveUsers(users);
+            errorElement.style.display = 'none';
+            alert('Senha alterada com sucesso!');
+            showMainContent();
+        }
+
+        function changeEmail() {
+            const newEmail = document.getElementById('new-email').value.trim();
+            const errorElement = document.getElementById('email-error');
+            const users = getUsers();
+            const user = users[currentUserQRA];
+
+            if (!newEmail || !newEmail.includes('@')) {
+                errorElement.textContent = 'Por favor, insira um email válido.';
+                errorElement.style.display = 'block';
+                return;
+            }
+
+            user.email = newEmail;
+            saveUsers(users);
+            errorElement.style.display = 'none';
+            alert('Email alterado com sucesso!');
+            showMainContent();
+        }
+
+        // --- Lógica de Recuperação de Senha (Atualizada para Vercel) ---
+        async function requestPasswordReset() {
+            const qra = document.getElementById('forgot-qra').value.trim();
+            const email = document.getElementById('forgot-email').value.trim();
+            const errorElement = document.getElementById('forgot-error');
+            const infoElement = document.getElementById('forgot-info');
+            const users = getUsers();
+            
+            errorElement.style.display = 'none';
+            infoElement.style.display = 'none';
+
+            if (!users[qra] || users[qra].email !== email || !email) {
+                errorElement.textContent = 'QRA ou email não correspondem a uma conta válida.';
+                errorElement.style.display = 'block';
+                return;
+            }
+
+            // Gerar um código de redefinição temporário
+            const resetCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            users[qra].password = resetCode;
+            saveUsers(users);
+            
+            const subject = 'Código de Redefinição de Senha';
+            const body = `Olá, ${qra}.<br><br>Seu código de redefinição de senha é: <b>${resetCode}</b>.<br>Use-o para fazer login e, em seguida, altere sua senha no seu perfil.`;
+
+            // Chama a Função Vercel para enviar o email
+            try {
+                const response = await fetch('/api/send-reset-email', {
+                    method: 'POST',
+                    body: JSON.stringify({ email, subject, body }),
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.ok) {
+                    infoElement.textContent = `Código de redefinição enviado para ${email}. Verifique sua caixa de entrada.`;
+                    infoElement.style.display = 'block';
+                    setTimeout(() => showLoginScreen(), 5000);
+                } else {
+                    errorElement.textContent = 'Ocorreu um erro ao enviar o email. Tente novamente mais tarde.';
+                    errorElement.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Erro na chamada da função Vercel:', error);
+                errorElement.textContent = 'Não foi possível conectar-se ao servidor de email. Verifique sua conexão ou tente mais tarde.';
+                errorElement.style.display = 'block';
+            }
+        }
+
+        // --- Lógica da Tabela de Frequências (Mantida) ---
+        function loadFrequencies() {
+            const users = getUsers();
+            const frequencies = users[currentUserQRA] ? users[currentUserQRA].frequencies : [];
+            const tableBody = document.getElementById('frequencyTable').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = '';
+            frequencies.forEach(freq => {
+                addRowToTable(freq);
+            });
+        }
+
+        function saveFrequencies() {
+            if (!currentUserQRA) return;
+            const users = getUsers();
+            const tableBody = document.getElementById('frequencyTable').getElementsByTagName('tbody')[0];
+            const rows = Array.from(tableBody.rows);
+            const frequencies = rows.map(row => {
+                const cells = row.cells;
+                return {
+                    frequency: cells[0].querySelector('input').value,
+                    mode: cells[1].querySelector('select').value,
+                    isGroup: cells[2].querySelector('select').value,
+                    groupName: cells[3].querySelector('input').value
+                };
+            });
+            users[currentUserQRA].frequencies = frequencies;
+            saveUsers(users);
+        }
+
+        function addNewRow() {
+            const defaultRow = {
+                frequency: '',
+                mode: 'USB',
+                isGroup: 'Não',
+                groupName: '-'
+            };
+            addRowToTable(defaultRow);
+            saveFrequencies();
+        }
+
+        function deleteRow(button) {
+            const row = button.parentNode.parentNode;
+            row.parentNode.removeChild(row);
+            saveFrequencies();
+        }
+
+        function addRowToTable(data) {
+            const tableBody = document.getElementById('frequencyTable').getElementsByTagName('tbody')[0];
+            const newRow = tableBody.insertRow();
+            
+            const freqCell = newRow.insertCell(0);
+            freqCell.setAttribute('data-label', 'Frequência');
+            const freqInput = document.createElement('input');
+            freqInput.type = 'text';
+            freqInput.value = data.frequency;
+            freqInput.placeholder = 'Ex: 7.180';
+            freqInput.addEventListener('input', saveFrequencies);
+            freqCell.appendChild(freqInput);
+
+            const modeCell = newRow.insertCell(1);
+            modeCell.setAttribute('data-label', 'Modo');
+            const modeSelect = createSelect(['AM', 'LSB', 'USB', 'FM', 'CW', 'SSTV', 'RTTY'], data.mode);
+            modeSelect.addEventListener('change', saveFrequencies);
+            modeCell.appendChild(modeSelect);
+
+            const isGroupCell = newRow.insertCell(2);
+            isGroupCell.setAttribute('data-label', 'É Grupo?');
+            const isGroupSelect = createSelect(['Não', 'Sim'], data.isGroup);
+            isGroupCell.appendChild(isGroupSelect);
+
+            const nameGroupCell = newRow.insertCell(3);
+            nameGroupCell.setAttribute('data-label', 'Nome do Grupo');
+            const nameGroupInput = document.createElement('input');
+            nameGroupInput.type = 'text';
+            nameGroupInput.value = data.groupName;
+            nameGroupInput.placeholder = 'Nome do Grupo';
+            nameGroupInput.disabled = data.isGroup === 'Não';
+            nameGroupInput.addEventListener('input', saveFrequencies);
+            nameGroupCell.appendChild(nameGroupInput);
+
+            isGroupSelect.onchange = function() {
+                if (this.value === 'Sim') {
+                    nameGroupInput.disabled = false;
+                    nameGroupInput.value = '';
+                } else {
+                    nameGroupInput.disabled = true;
+                    nameGroupInput.value = '-';
+                }
+                saveFrequencies();
+            };
+
+            const actionsCell = newRow.insertCell(4);
+            actionsCell.setAttribute('data-label', 'Ações');
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.textContent = 'Remover';
+            deleteBtn.onclick = function() {
+                deleteRow(this);
+            };
+            actionsCell.appendChild(deleteBtn);
+        }
+        
+        function createSelect(options, selectedValue) {
+            const select = document.createElement('select');
+            options.forEach(optionText => {
+                const option = document.createElement('option');
+                option.value = optionText;
+                option.textContent = optionText;
+                if (optionText === selectedValue) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+            return select;
+        }
+    </script>
+</body>
+</html>
